@@ -1,0 +1,275 @@
+#pragma once
+
+#include "TRSensor.hpp"
+#include "../pros/imu.hpp"
+#include "../lemlib/chassis/chassis.hpp"
+
+/**
+ * Options used by TitanReset when initializing the TitanReset chassis.
+ * 
+ * @note Subject to change as more modifiable options are added.
+ */
+struct tr_options
+{
+    /**
+     * Sensor trust threshold on whether to use dsr if called. 0 is least trust and 1 is full trust.
+     */
+    const float sensor_trust = 1.0;
+};
+
+/**
+ *  Standard field perimeter radii.
+ */
+namespace tr_fields
+{
+    constexpr float plastic = 70.205;
+    constexpr float metal = 70.336;
+}
+
+/**
+ * @brief Implemented version of the abstract drivebase class to enable support with lemlib.
+ * 
+ * This is an explample of what an implementation of any template could look like. Use this as a base if creating an impelementation for another template.
+ * 
+ * @note This class is implemented in the header file to be commented out if taking a template nuetral approach.
+ */
+class tr_lem_base : public tr_drivebase_abstract
+{
+    public:
+    lemlib::Chassis* chassis;
+
+    tr_lem_base(lemlib::Chassis* chassis_ptr) : chassis(chassis_ptr) {}
+
+    tr_vector3 getPose() override
+    {
+        tr_vector3 vec_ret;
+        lemlib::Pose current = chassis->getPose();
+
+        vec_ret.x = current.x;
+        vec_ret.y = current.y;
+        vec_ret.z = current.theta;
+
+        return vec_ret;
+    }
+
+    void setPose(tr_vector3 new_pose) override
+    {
+        lemlib::Pose set_pose(0,0,0);
+
+        set_pose.x = new_pose.x;
+        set_pose.y = new_pose.y;
+        set_pose.theta = new_pose.z;
+
+        chassis->setPose(set_pose);
+    }
+};
+
+/**
+ * TitanReset chassis object. Used to perform distance sensor resets
+ */
+class tr_chassis
+{
+public:
+
+    /**
+     * @brief Initialize the localization chassis
+     * @note ONLY INITIALIZE THIS WHEN YOUR ROBOT IS NOT MOVING!
+     *
+     * @param inertial pointer to the inertial sensor on the robot
+     * @param base pointer to the drivebase chassis of the robot
+     * @param sensors array of pointers to the localization sensors of the robot
+     */
+    tr_chassis(tr_drivebase_abstract* base, std::array<tr_sensor*,4> sensors, const float field_radius = tr_fields::plastic);
+
+    /**
+     * @brief Initialize the localization chassis
+     * @note ONLY INITIALIZE THIS WHEN YOUR ROBOT IS NOT MOVING!
+     * 
+     * @details If using TitanReset template nuetral, this constructor can be used as a starting place for how to initalize the TitanReset chassis using a template nuetral option. This is why it is also implemented in the header file as it allows it to be removed when going template nuetral.
+     *
+     * @param inertial pointer to the inertial sensor on the robot
+     * @param base pointer to the lemlib chassis of the robot
+     * @param sensors array of pointers to the localization sensors of the robot
+     */
+    tr_chassis(lemlib::Chassis* base, std::array<tr_sensor*,4> sensors, const float field_radius = tr_fields::plastic) : tr_chassis(new tr_lem_base(base), sensors, field_radius) {}
+
+    /**
+     * @brief Performs a distance sensor reset using the sensors on the robot given the robot already knows where it is and where it is facing.
+     */
+    void perform_dsr();
+
+    /**
+     * @brief Performs a distance sensor reset using the sensors on the robot given the robot does not know which quadrant it is in.
+     * 
+     * @note Use this function after a movement that performs an action such as driving over a parking zone which crosses quadrants.
+     *
+     * @param quad The quadrant the robot is currently in
+     */
+    void perform_dsr_quad(tr_quadrant quadrant);
+
+    /**
+     * @brief Performs a distance sensor reset using the sensors on the robot given the robot does not know where it is and the sensors are fully trusted.
+     * 
+     * @note This will set the heading of the chassis and imu as it performs a distance sensor reset. 
+     * @warning This will always set the location of the robot. Use only in a situation where the robot starts in familliar place each time like the start of an auton.
+     *
+     * @param quadrant The quadrant the robot is currently in
+     * @param heading The heading of the robot
+     */
+    void perform_dsr_init(tr_quadrant quadrant, float heading);
+
+    /**
+     * @breif Gets the robots quadrant based on its coordinates
+     * @return The quadrant of the robot
+     */
+    tr_quadrant get_quadrant();
+
+    /**
+     * @brief Starts an odometry system and distance sensor system recording in a background task
+     * 
+     * @note appends to the files: odom_data.txt, dist_data.txt respectively
+     *
+     * @param name name of the recording
+     * @param date date of the recording
+     * @param time time of the recording
+     */
+    void start_location_recording(std::string name, std::string date = __DATE__, std::string time = __TIME__);
+
+    /**
+     * @brief Stops the current odometry system recording
+     */
+    void stop_location_recording();
+
+    /*
+    *   Note - Everything below this line is either utilities to aid with the implementation of TitanReset and are most likey irrelevant to your goals.
+    */
+
+private:
+
+    /**
+     * Whether the display is active and being displayed.
+     */
+    bool b_display;
+
+    /*
+    * Active sensors being used by the robot.
+    */
+    int active_sensors;
+
+    /**
+     * Active field radius.
+     */
+    const float wall_cord;
+
+    void set_active_sensors(int sensors);
+
+public:
+
+    /**
+     * @brief Normalizes heading to the domain of 0-360. Also called finding the coterminal angle
+     * @param heading heading to normalize.
+     * @return Normalized heading
+     */
+    static float quadrant_recursive(float heading);
+
+    /**
+     * @warning THIS IS NOT IMPLEMENTED AS OF CURRENT. WILL ALWYAS RETURN TRUE.
+     * @brief Compares the location against locations the robot physically cannot exist at such as inside the match loader or out of bounds based on the robots current position and size.
+     *
+     * @param pose current location vector
+     * @returns whether the location can physically exist.
+     */
+    static bool can_position_exist(tr_vector3 pose);
+
+    static std::string get_quadrant_string(tr_quadrant quadrant);
+
+    /**
+     * @brief Returns the relevant sensors based on the heading of the robot.
+     */
+    tr_quadrant sensor_relevancy();
+
+    /**
+     * @brief Returns the relevant sensors based on the heading of the robot.
+     *
+     * Requires normalized heading 0-360 degrees.
+     *
+     * For 315 - 45 degrees: ++
+     * For 45 - 135 degrees: -+
+     * For 135 - 225 degrees: --
+     * For 225 - 315 degrees: +-
+     */
+    tr_quadrant sensor_relevancy(float heading);
+
+    /**
+     * @brief Average confidence of value pair
+     * @param one first confidence pair
+     * @param two second confidence pair
+     * @return Average confidence of value pair
+     */
+    static float conf_avg(tr_distance one, tr_distance two);
+
+
+    /**
+     * @brief Returns the confidence pair of a coordinate pair representing the robots location gathered from the sensors.
+     * @param quad Current quadrant of the robot
+     * @return Confidence pair of a coordinate pair representing the robots location gathered from the sensors.
+     */
+    tr_conf_pair<tr_vector3> get_position_calculation(tr_quadrant quadrant);
+
+    tr_conf_pair<tr_vector3> get_position_calculation(tr_quadrant quadrant, float heading);
+
+    /**
+     * Initializes the debug screen.
+     */
+    static void init_display();
+
+    /**
+     * Renders the debug screen. Use in a loop.
+     */
+    static void update_display(tr_chassis* chassis);
+
+    /**
+     * Shutdown the debug screen
+     */
+    static void shutdown_display();
+
+    /**
+     * @breif Uses flags to return whether a sensor is being used.
+     * @note Active sensors are set by performing a distance sensor reset.
+     * @param r_sensor sensor flags
+     * @return whether that sensor is being used.
+     */
+    bool is_sensor_used(int r_sensor);
+
+    ~tr_chassis();
+
+private:
+
+    /*
+    * Private objects to be used by TitanReset
+    */
+
+    /**
+     * Location recording task pointer
+     */
+    pros::Task* location_task;
+
+    /** 
+     * Sensors
+     */
+    tr_sensor* north;
+    tr_sensor* east;
+    tr_sensor* south;
+    tr_sensor* west;
+    pros::Imu* imu;
+
+    /** 
+     * Drivebase reference
+     */
+    tr_drivebase_abstract* chassis;
+
+    /**
+     * Provided options
+     */
+    tr_options options;
+};
