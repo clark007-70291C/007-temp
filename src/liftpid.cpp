@@ -158,4 +158,8 @@ double getPositionInches() {
     return centiDegreesToInches(rotation.get_position());
 }
 
+double getMotorTemperature(std::uint8_t motorIndex) {
+    return motors.get_temperature(motorIndex);
+}
+
 } // namespace liftpid

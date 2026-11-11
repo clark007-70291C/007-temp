@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "Lemcode",
+    "project_name": "test-dontrun",
     "target": "v5",
     "templates": {
       "LemLib": {
@@ -657,7 +657,8 @@
     },
     "upload_options": {
       "icon": "pizza",
-      "description": "BRAIN SCREEN"
+      "description": "BRAIN SCREEN",
+      "slot": 2
     },
     "use_early_access": false
   }

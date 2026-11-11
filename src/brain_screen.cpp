@@ -1,4 +1,5 @@
 #include "brain_screen.hpp"
+#include "liftpid.hpp"
 
 #include "lemlib/chassis/chassis.hpp" // IWYU pragma: keep
 #include "liblvgl/core/lv_obj.h"
@@ -7,20 +8,18 @@
 #include "liblvgl/widgets/bar/lv_bar.h"
 #include "liblvgl/widgets/button/lv_button.h"
 #include "liblvgl/widgets/label/lv_label.h"
-#include "pros/motor_group.hpp"
-#include "pros/rotation.hpp"
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
 
+namespace liftpid {
+double getMotorTemperature(std::uint8_t motorIndex);
+}
+
 extern lemlib::Chassis chassis;
 extern lemlib::ControllerSettings linearController;
 extern lemlib::ControllerSettings angularController;
-extern pros::MotorGroup liftMotors;
-extern pros::Rotation liftRot;
-extern double liftCentiDegreesToInches(double positionCentiDegrees);
 
 namespace brain_screen {
 std::atomic<AutonRoutine> selectedAutonRoutine{AutonRoutine::CLOSE};
@@ -276,7 +275,7 @@ void updatePoseLabels(lv_timer_t*) {
     const double coordinates[] = {pose.x, pose.y, pose.theta};
     const char* names[] = {"X", "Y", "Theta"};
     const auto liftHeightTenths = static_cast<std::int32_t>(std::round(
-        std::abs(liftCentiDegreesToInches(liftRot.get_position())) * 10.0));
+        std::abs(liftpid::getPositionInches()) * 10.0));
     const auto liftHeightMagnitude = std::abs(liftHeightTenths);
 
     for (std::uint8_t i = 0; i < 3; ++i) {
@@ -684,7 +683,7 @@ void updateMotorTemperatureLabels(lv_timer_t*) {
     if (lv_screen_active() != motorTemperatureScreen) return;
 
     const double temperatures[] = {
-        liftMotors.get_temperature(0), liftMotors.get_temperature(1)
+        liftpid::getMotorTemperature(0), liftpid::getMotorTemperature(1)
     };
     const char* names[] = {"Lift Motor 1", "Lift Motor 2"};
     for (std::uint8_t i = 0; i < 2; ++i) {
@@ -897,9 +896,7 @@ void createAutonSelector() {
 
 void updateSimpleAutonScreen(lv_timer_t*) {
     disablePidTunerForCompetitionSwitch();
-    if (autonScreenTransitionRequested.exchange(false)) {
-        createMatrixRainScreen();
-    }
+    autonScreenTransitionRequested.exchange(false);
 }
 
 void createSimpleAutonSelector() {
@@ -911,18 +908,35 @@ void createSimpleAutonSelector() {
     lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
     const char* buttonNames[] = {"Close", "Far", "Skills"};
-    const std::int32_t buttonWidth = 120;
-    const std::int32_t buttonX = (lv_obj_get_width(screen) - buttonWidth) / 2;
-    constexpr std::int32_t buttonY[] = {22, 70, 118};
+    const char* poseNames[] = {"X", "Y", "Theta"};
+    const std::int32_t screenWidth = lv_obj_get_width(screen);
+    constexpr std::int32_t buttonWidth = 120;
+    constexpr std::int32_t buttonGap = 16;
+    constexpr std::int32_t buttonHeight = 40;
+    const std::int32_t buttonStartX =
+        (screenWidth - 3 * buttonWidth - 2 * buttonGap) / 2;
+    constexpr std::int32_t buttonY = 100;
+    constexpr std::int32_t poseLabelWidth = 140;
+    constexpr std::int32_t poseLabelY = 34;
     const lv_color_t black = lv_color_hex(0x000000);
     const lv_color_t white = lv_color_hex(0xFFFFFF);
     const AutonRoutine selectedRoutine = selectedAutonRoutine.load();
 
     for (std::uint8_t i = 0; i < 3; ++i) {
+        poseLabels[i] = lv_label_create(screen);
+        lv_label_set_text(poseLabels[i], poseNames[i]);
+        lv_obj_set_width(poseLabels[i], poseLabelWidth);
+        lv_obj_set_style_text_font(poseLabels[i], &lv_font_montserrat_16, LV_PART_MAIN);
+        lv_obj_set_style_text_align(poseLabels[i], LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_text_color(poseLabels[i], white, LV_PART_MAIN);
+        lv_obj_set_pos(poseLabels[i],
+                       i * (screenWidth / 3) + (screenWidth / 3 - poseLabelWidth) / 2,
+                       poseLabelY);
+
         autonButtons[i] = lv_button_create(screen);
         lv_obj_add_flag(autonButtons[i], LV_OBJ_FLAG_CHECKABLE);
-        lv_obj_set_size(autonButtons[i], buttonWidth, 36);
-        lv_obj_set_pos(autonButtons[i], buttonX, buttonY[i]);
+        lv_obj_set_size(autonButtons[i], buttonWidth, buttonHeight);
+        lv_obj_set_pos(autonButtons[i], buttonStartX + i * (buttonWidth + buttonGap), buttonY);
         lv_obj_set_style_bg_color(autonButtons[i], black, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(autonButtons[i], LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_color(
@@ -945,6 +959,9 @@ void createSimpleAutonSelector() {
             lv_obj_add_state(autonButtons[i], LV_STATE_CHECKED);
         }
     }
+
+    updatePoseLabels(nullptr);
+    lv_timer_create(updatePoseLabels, 100, nullptr);
 
     addPidTunerButton(screen);
     if (selectorPidTunerButton != nullptr) {

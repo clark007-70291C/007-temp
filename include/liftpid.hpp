@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace liftpid {
 
 // Named lift heights from the original program.
@@ -47,5 +49,8 @@ void tarePosition();
 
 // Read the current lift height in inches relative to the zero point.
 double getPositionInches();
+
+// Read the temperature in Celsius of one of the lift motors by group index.
+double getMotorTemperature(std::uint8_t motorIndex);
 
 } // namespace liftpid
