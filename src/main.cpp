@@ -103,7 +103,7 @@ lemlib::ExpoDriveCurve steerCurve(3, // joystick deadband out of 127
 lemlib::Chassis chassis(drivetrain, linearController, angularController, sensors, &throttleCurve, &steerCurve);
 
 // Choose the follower used by the Skills test routine.
-bool testPurePursuit = true;
+
 
 
 // Pure Pursuit tuning. Waypoint tolerance is how close the robot must get to a
@@ -171,7 +171,10 @@ void autonomousClose() {
 
 // Far-side autonomous path.
 void autonomousFar() {
-    
+    purepursuit::execute({
+{0.0 , 0.0},
+{0.0 , 0.0, purepursuit::execute([] { liftpid::moveTo(liftpid::FIRST); })},
+    });
 }
 
 // Add the skills route here.
@@ -273,3 +276,7 @@ TOGGLE.move(DOWN ? -127 : 0); // this is just a simplified if and else statement
         pros::delay(10);
     }
 }
+//this is so i dont forget how to update the repo when i update the code 
+//git add .
+//git commit -m "Describe your change" just change this to whatever i did 
+//git push

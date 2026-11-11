@@ -895,11 +895,73 @@ void createAutonSelector() {
     addPidTunerButton(screen);
 }
 
+void updateSimpleAutonScreen(lv_timer_t*) {
+    disablePidTunerForCompetitionSwitch();
+    if (autonScreenTransitionRequested.exchange(false)) {
+        createMatrixRainScreen();
+    }
+}
+
+void createSimpleAutonSelector() {
+    lv_obj_t* screen = lv_obj_create(nullptr);
+    autonSelectorScreen = screen;
+    selectorUiRevealed = false;
+    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+
+    const char* buttonNames[] = {"Close", "Far", "Skills"};
+    const std::int32_t buttonWidth = 120;
+    const std::int32_t buttonX = (lv_obj_get_width(screen) - buttonWidth) / 2;
+    constexpr std::int32_t buttonY[] = {22, 70, 118};
+    const lv_color_t black = lv_color_hex(0x000000);
+    const lv_color_t white = lv_color_hex(0xFFFFFF);
+    const AutonRoutine selectedRoutine = selectedAutonRoutine.load();
+
+    for (std::uint8_t i = 0; i < 3; ++i) {
+        autonButtons[i] = lv_button_create(screen);
+        lv_obj_add_flag(autonButtons[i], LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_size(autonButtons[i], buttonWidth, 36);
+        lv_obj_set_pos(autonButtons[i], buttonX, buttonY[i]);
+        lv_obj_set_style_bg_color(autonButtons[i], black, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(autonButtons[i], LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(
+            autonButtons[i], white,
+            static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+                static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
+        lv_obj_set_style_radius(autonButtons[i], 6, LV_PART_MAIN);
+        lv_obj_set_style_border_width(autonButtons[i], 1, LV_PART_MAIN);
+        lv_obj_set_style_border_color(autonButtons[i], white, LV_PART_MAIN);
+        lv_obj_add_event_cb(
+            autonButtons[i], onAutonRoutineSelected, LV_EVENT_CLICKED, &autonRoutineOptions[i]);
+
+        autonButtonLabels[i] = lv_label_create(autonButtons[i]);
+        lv_label_set_text(autonButtonLabels[i], buttonNames[i]);
+        lv_obj_set_style_text_color(
+            autonButtonLabels[i], selectedRoutine == autonRoutineOptions[i] ? black : white,
+            LV_PART_MAIN);
+        lv_obj_center(autonButtonLabels[i]);
+        if (selectedRoutine == autonRoutineOptions[i]) {
+            lv_obj_add_state(autonButtons[i], LV_STATE_CHECKED);
+        }
+    }
+
+    addPidTunerButton(screen);
+    if (selectorPidTunerButton != nullptr) {
+        lv_obj_set_pos(selectorPidTunerButton, (lv_obj_get_width(screen) - 76) / 2, 190);
+        lv_obj_remove_flag(selectorPidTunerButton, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    lv_timer_create(updateSimpleAutonScreen, 30, nullptr);
+    lv_screen_load(screen);
+}
 
 
 
 void initialize() {
-    createAutonSelector();
+    // Keep one line active: use the other to switch between the current screen and the simple one.
+    // createAutonSelector();
+    createSimpleAutonSelector();
 }
 
 void requestAutonScreenTransition() {
