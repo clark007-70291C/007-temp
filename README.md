@@ -112,3 +112,81 @@ Include `dsr.hpp` in `main.cpp` to use the reset helper; do not include `dsr.cpp
 ### Autonomous routines
 
 The Brain screen selects which autonomous function to run. Add the route to `autonomousClose()`, `autonomousFar()`, or `autonomousSkills()` in `src/main.cpp`. The current routes are examples/placeholders: replace their coordinates and trajectory samples with the actual field route, and enable the commented Skills examples if you want to use them.
+
+
+## Installing and Running the Project
+
+This is a PROS project for a VEX V5 robot. You can get a local copy with Git Bash, another Windows terminal, or by downloading the project as a ZIP file.
+
+### Option 1: Install Git Bash, then clone the project
+
+Git Bash is included with **Git for Windows**.
+
+1. Download Git for Windows from [git-scm.com/download/win](https://git-scm.com/download/win).
+2. Run the installer. The default options are fine.
+3. Open **Git Bash** from the Windows Start menu.
+4. Choose where you want the project saved. For example, to use your Documents folder, run:
+
+   ```bash
+   cd ~/Documents
+   ```
+
+5. Clone the repository and enter its folder:
+
+   ```bash
+   git clone https://github.com/clark007-70291C/CHS-LEMLIB_LIB.git
+   cd CHS-LEMLIB_LIB
+   ```
+
+The project files will now be in a `CHS-LEMLIB_LIB` folder inside Documents.
+
+### Option 2: Use PowerShell or Command Prompt
+
+Git Bash is optional. If **Git for Windows** is installed, you can run Git commands from PowerShell or Command Prompt.
+
+**PowerShell:**
+
+```powershell
+Set-Location "$HOME\Documents"
+git clone https://github.com/clark007-70291C/CHS-LEMLIB_LIB.git
+Set-Location "CHS-LEMLIB_LIB"
+```
+
+**Command Prompt:**
+
+```cmd
+cd /d "%USERPROFILE%\Documents"
+git clone https://github.com/clark007-70291C/CHS-LEMLIB_LIB.git
+cd CHS-LEMLIB_LIB
+```
+
+If Git is not installed, install Git for Windows as described in Option 1, or use the ZIP method below.
+
+### Option 3: Download without using Git
+
+1. Open the repository page: [github.com/clark007-70291C/CHS-LEMLIB_LIB](https://github.com/clark007-70291C/CHS-LEMLIB_LIB).
+2. Select **Code**, then **Download ZIP**.
+3. Extract the ZIP file to a location you can find, such as Documents.
+4. Open the extracted project folder. It should contain `project.pros`.
+
+This method does not require Git or Git Bash. You also won’t be able to use Git to pull updates unless you install Git later.
+
+### Open, build, and upload the project
+
+1. Install **Visual Studio Code** and the **PROS extension/toolchain** for VEX V5.
+2. In VS Code, select **File > Open Folder** and choose the project folder containing `project.pros`.
+3. Connect and power on the V5 Brain.
+4. Build and upload using the PROS extension, or open a terminal in the project folder and run:
+
+   ```bash
+   pros make
+   pros upload
+   ```
+
+The PROS toolchain must be installed for these commands to work. Uploading requires the Brain to be connected to the computer.
+
+### Before running on the robot
+
+Check the hardware port assignments and measurements in the source files and make sure they match your robot. Each V5 smart device must use a unique port. The current configuration assigns port 19 to both a drive motor and the vertical rotation sensor, and port 2 to both the toggle motor and the east distance sensor. Resolve those conflicts before using the code.
+
+Also, `main.cpp` should include `dsr.hpp`, not `dsr.cpp`. The `dsr.cpp` implementation should be compiled as a normal project source file.
