@@ -15,7 +15,7 @@ Most drivetrain and odometry configuration is in `src/main.cpp`:
 
 The autonomous functions set the chassis pose to `(0, 0, 0)` at the robot’s starting point. Use the same coordinate system for all autonomous paths and distance-sensor wall coordinates.
 
-**Check for port conflicts before running:** the current configuration assigns port 19 to both a right drive motor and the vertical rotation sensor. It also assigns port 2 to both the toggle motor and the east distance sensor. Change the port assignments so each device has its own port.
+
 
 ### Lift PID
 
