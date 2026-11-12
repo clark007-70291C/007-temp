@@ -141,6 +141,7 @@ void initialize() {
     PISTON::set(false);
 
     chassis.calibrate();
+    wall_localization::start();
     liftpid::initialize();
 
     // Keep the robot's current position visible in the brain log.
