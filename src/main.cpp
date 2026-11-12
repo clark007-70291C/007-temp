@@ -1,5 +1,5 @@
 #include "lemlib/api.hpp" // IWYU pragma: keep
-#include "dsr.hpp" // IWYU pragma: keep
+#include "dsr.cpp"
 #include "liftpid.hpp"
 #include "colorseek.hpp"
 #include "controller_buttons.hpp"
@@ -119,7 +119,7 @@ purepursuit::Config purePursuitConfig{
     .timeoutMilliseconds = 5000
 };
 
-// Ramsete tuning for the alternative Skills path.
+// Ramsete tuning 
 ramsete::Config skillsRamseteConfig{
     .trackWidthInches = 12.0,
     .wheelDiameterInches = 2.75,
@@ -130,9 +130,7 @@ ramsete::Config skillsRamseteConfig{
     .finalSettleTimeoutSeconds = 1.5
 };
 
-// Reset odometry from the east and south walls but teh sensors are facing north and west to begin with distance sensors configured in dsr.cpp.
-// Call this at a spot where the robot is square to those walls.
-// dsr::resetWall();
+// DSR wall coordinates must use this start-based origin before calling resetPosition().
 
 // Set up screens, sensors, and background tasks at program start.
 void initialize() {
@@ -141,7 +139,6 @@ void initialize() {
     PISTON::set(false);
 
     chassis.calibrate();
-    wall_localization::start();
     liftpid::initialize();
 
     // Keep the robot's current position visible in the brain log.
@@ -239,6 +236,7 @@ void autonomous() {
     brain_screen::requestAutonScreenTransition();
     liftpid::tarePosition();
 
+    chassis.setPose(0, 0, 0);
     runSelectedAuton();
 }
 // PROS calls this repeatedly during driver-control mode.
